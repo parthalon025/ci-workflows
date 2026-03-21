@@ -32,10 +32,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Python audit
         if: ${{ inputs.language == 'python' || inputs.language == 'mixed' }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: ${{ inputs.python-version }}
       - name: Run pip-audit
@@ -50,7 +50,7 @@ jobs:
           fi
       - name: Node audit
         if: ${{ inputs.language == 'node' || inputs.language == 'mixed' }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: ${{ inputs.node-version }}
       - name: Run npm audit
@@ -66,10 +66,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Setup Python
         if: ${{ inputs.language == 'python' || inputs.language == 'mixed' }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: ${{ inputs.python-version }}
       - name: Python tests
@@ -92,7 +92,7 @@ jobs:
           eval .venv/bin/python -m pytest "$PYTEST_ARGS" $MARKER_ARG
       - name: Setup Node
         if: ${{ inputs.language == 'node' || inputs.language == 'mixed' }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
           node-version: ${{ inputs.node-version }}
       - name: Node tests
@@ -105,10 +105,10 @@ jobs:
     name: Full Secret Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -120,9 +120,9 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: github/codeql-action/init@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
         with:
           languages: ${{ inputs.language == 'mixed' && 'python' || inputs.language }}
-      - uses: github/codeql-action/autobuild@v3
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/autobuild@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
+      - uses: github/codeql-action/analyze@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3

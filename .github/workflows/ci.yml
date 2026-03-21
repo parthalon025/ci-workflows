@@ -10,15 +10,15 @@ jobs:
     name: Lint Workflows
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Run actionlint
-        uses: rhysd/actionlint@v1.7.11
+        uses: rhysd/actionlint@393031adb9afb225ee52ae2ccd7a5af5525e03e8  # v1.7.11
 
   validate-templates:
     name: Validate Templates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install yamllint
         run: pip install yamllint
       - name: Lint templates
