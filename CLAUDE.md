@@ -1,33 +1,126 @@
 # ci-workflows
 
-Centralized reusable GitHub Actions workflows for all parthalon025 repos.
+Centralized reusable GitHub Actions workflows for all parthalon025 repos. Three-tier criticality model (DO-178C DAL-inspired).
 
-## Architecture
+**Repo:** https://github.com/parthalon025/ci-workflows (public — required for GitHub Free plan cross-repo reusable workflows)
 
-- `.github/workflows/reusable-*.yml` — reusable workflow definitions (the product)
-- `.github/workflows/ci.yml` — self-test (dogfooding)
-- `templates/` — caller templates stamped into consumer repos by ci-sweep.sh
-- `scripts/` — deployment, drift detection, and observability tools
-- `canary/` — minimal test fixtures for self-test validation
-- `docs/` — TIER-ASSIGNMENTS.md (source of truth), RUNBOOK.md (operations)
+## Prerequisites
+
+Local tools needed to develop/maintain this repo:
+- `actionlint` — workflow YAML linter (`brew install actionlint`)
+- `yamllint` — generic YAML linter (`pip install yamllint`)
+- `shellcheck` — bash script linter (`brew install shellcheck`)
+- `gh` — GitHub CLI (authenticated)
 
 ## Commands
 
-- Lint workflows: `actionlint .github/workflows/*.yml`
-- Validate templates: `yamllint templates/`
-- Verify SHA pins: `scripts/verify-pins.sh`
-- Deploy to repo: `scripts/ci-sweep.sh --repo <name>`
-- Check health: `python3 scripts/ci-health.py`
-- Check drift: `scripts/ci-drift.sh --all`
+```bash
+# Lint all workflow YAML
+actionlint .github/workflows/*.yml
+
+# Validate templates
+yamllint -d relaxed templates/
+
+# Verify all actions are SHA-pinned
+scripts/verify-pins.sh
+
+# Deploy to a consumer repo
+scripts/ci-sweep.sh --repo <name>              # deploy tier from TIER-ASSIGNMENTS.md
+scripts/ci-sweep.sh --repo <name> --tier 2     # override tier
+scripts/ci-sweep.sh --repo <name> --dry-run    # preview only
+scripts/ci-sweep.sh --all                      # sweep all 24 repos
+scripts/ci-sweep.sh --verify-only --all        # check drift without modifying
+scripts/ci-sweep.sh --secrets --all            # bootstrap GitHub secrets from ~/.env
+```
+
+## Architecture
+
+```
+.github/workflows/
+  ci.yml                      # self-test (actionlint + canary)
+  reusable-lint-python.yml    # ruff check + format + pip-audit
+  reusable-lint-node.yml      # npm ci + lint + format:check
+  reusable-test-python.yml    # pytest (venv, markers, coverage, codecov)
+  reusable-test-node.yml      # npm test (optional build-first)
+  reusable-test-custom.yml    # arbitrary test command (shell, bats, make)
+  reusable-security.yml       # gitleaks full-history scan
+  reusable-codeql.yml         # GitHub CodeQL SAST
+  reusable-release.yml        # release-please automation
+  reusable-nightly.yml        # deep scan: dep audit + full tests + secrets + codeql
+  reusable-claude-review.yml  # AI code review via claude-code-action
+  reusable-deploy.yml         # Tailscale SSH deploy with approval gate
+templates/                    # caller templates stamped by ci-sweep.sh
+  ci-tier{1,2,3}-{python,node,mixed}.yml
+  nightly.yml, release.yml, claude-review.yml, dependabot.yml
+scripts/
+  ci-sweep.sh                 # deploy templates + secrets + branch protection
+  verify-pins.sh              # check SHA-pinning compliance
+canary/                       # minimal Python + Node projects for self-test
+docs/
+  TIER-ASSIGNMENTS.md          # source of truth: repo → tier + language + config
+  RUNBOOK.md                   # break-glass, secret rotation, promotion
+```
+
+## Consumers
+
+This repo is referenced by 24 consumer repos via `uses: parthalon025/ci-workflows/...@v1`. Changes here propagate automatically on next CI run.
+
+**Upstream callers:**
+- `claude-init` (claude-onboarding-kit) — calls `ci-sweep.sh` during new repo setup
+- `/setup-repo` skill — calls `ci-sweep.sh` during interactive setup
+- All consumer repos — call reusable workflows at runtime
+
+## Three-Tier Model
+
+| Tier | Pipeline | Count |
+|------|----------|-------|
+| 1: Production | lint + test + security + codeql + nightly + claude-review + release | 10 |
+| 2: Active Dev | lint + test + security + release | 10 |
+| 3: Minimal | security (gitleaks) + dependabot only | 4 |
+
+Source of truth: `docs/TIER-ASSIGNMENTS.md`
 
 ## Versioning
 
-- `@v1` floating tag points to latest stable. Consumers pin here.
+- `@v1` floating tag — latest stable. All consumers pin here.
 - `@v1.x.y` immutable point releases.
-- Self-test CI must pass before any tag is created.
+- Self-test CI must pass before tagging.
+- Break-glass: `git tag -f v1 <sha> && git push --force-with-lease origin v1`
+
+## Security
+
+**This is a public repo.** The workflow YAML is standard CI configuration — not sensitive. But:
+- Never put actual secret values in templates or workflows
+- `reusable-deploy.yml` references `justin-linux` as default hostname — acceptable (Tailscale-only, not routable)
+- Templates use `secrets: inherit` — secrets are stored in consumer repos, not here
+- Secret requirements per tier documented in `docs/RUNBOOK.md`
 
 ## Conventions
 
-- All third-party actions are SHA-pinned (supply chain security)
+- All third-party actions must be SHA-pinned (`scripts/verify-pins.sh` enforces)
 - All reusable workflows accept `working-directory` input (default: `.`)
-- Caller templates are generated by ci-sweep.sh, not hand-written
+- Caller templates generated by `ci-sweep.sh`, not hand-written
+- Consumer repos commit CI changes on feature branches via PR
+
+## Testing
+
+- Self-test CI: actionlint + yamllint + canary Python lint/test + canary Node test
+- Canary projects: `canary/python-project/`, `canary/node-project/`
+- Scripts validated via `--dry-run` mode + shellcheck
+
+## Gotchas
+
+- **Must stay public** — GitHub Free plan cannot call reusable workflows from private repos
+- Branch protection API requires GitHub Pro for private consumer repos — `ci-sweep.sh` warns on 403
+- `dependabot.yml` template has `{{ECOSYSTEM_BLOCK}}` placeholder — excluded from yamllint in CI
+- `npm cache` in `setup-node` requires `package-lock.json` — all Node projects must have one
+- Hookify blocks direct-to-main commits in consumer repos — `ci-sweep.sh` uses `--no-verify`
+
+## Operations
+
+- **RUNBOOK:** `docs/RUNBOOK.md`
+- **Design:** `~/Documents/docs/plans/2026-03-21-cicd-devops-pipeline-design.md`
+- **Impl plan:** `~/Documents/docs/plans/2026-03-21-cicd-devops-pipeline-impl.md`
+
+## Scope Tags
+domain:infrastructure, scope:cross-project
