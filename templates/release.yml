@@ -1,0 +1,14 @@
+name: Release
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    uses: parthalon025/ci-workflows/.github/workflows/reusable-release.yml@v1
+    with:
+      release-type: '{{RELEASE_TYPE}}'
+    secrets: inherit
+    permissions:
+      contents: write
+      pull-requests: write

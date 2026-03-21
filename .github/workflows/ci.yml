@@ -1,0 +1,77 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  actionlint:
+    name: Lint Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        uses: rhysd/actionlint@v1.7.11
+
+  validate-templates:
+    name: Validate Templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: Lint templates
+        run: |
+          for f in templates/*.yml; do
+            case "$f" in
+              templates/dependabot.yml) continue ;;
+            esac
+            yamllint -d relaxed "$f"
+          done
+      - name: Verify SHA pins in reusable workflows
+        run: |
+          echo "Checking for unpinned third-party actions in reusable workflows..."
+          UNPINNED=$(grep -rn 'uses:' .github/workflows/reusable-*.yml | grep -v '#' | grep '@v[0-9]' || true)
+          if [ -n "$UNPINNED" ]; then
+            echo "WARNING: Found tag-based action refs (will be SHA-pinned in Batch 10):"
+            echo "$UNPINNED"
+          else
+            echo "All third-party actions are SHA-pinned"
+          fi
+
+  canary-python-lint:
+    name: Canary Python Lint
+    uses: ./.github/workflows/reusable-lint-python.yml
+    with:
+      working-directory: canary/python-project
+
+  canary-python-test:
+    name: Canary Python Test
+    needs: canary-python-lint
+    uses: ./.github/workflows/reusable-test-python.yml
+    with:
+      working-directory: canary/python-project
+      install-command: 'pip install -e ".[dev]"'
+      codecov-upload: false
+
+  canary-node-test:
+    name: Canary Node Test
+    uses: ./.github/workflows/reusable-test-node.yml
+    with:
+      working-directory: canary/node-project
+
+  ci-pass:
+    name: CI Pass
+    needs: [actionlint, validate-templates, canary-python-lint, canary-python-test, canary-node-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]] || \
+             [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All checks passed"

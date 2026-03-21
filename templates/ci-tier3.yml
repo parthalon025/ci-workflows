@@ -1,0 +1,12 @@
+name: Security
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security:
+    uses: parthalon025/ci-workflows/.github/workflows/reusable-security.yml@v1
+    secrets: inherit
