@@ -122,5 +122,15 @@ Source of truth: `docs/TIER-ASSIGNMENTS.md`
 - **Design:** `~/Documents/docs/plans/2026-03-21-cicd-devops-pipeline-design.md`
 - **Impl plan:** `~/Documents/docs/plans/2026-03-21-cicd-devops-pipeline-impl.md`
 
+## Typical Workflow
+
+1. **Edit** a reusable workflow in `.github/workflows/reusable-*.yml` (or a template in `templates/`)
+2. **Lint** locally: `actionlint .github/workflows/*.yml`
+3. **Deploy** to one consumer to verify: `scripts/ci-sweep.sh --repo <name> --dry-run` then without `--dry-run`
+4. A PR is created in the consumer repo (committed on a feature branch by `ci-sweep.sh`)
+5. **Review + merge** the PR in the consumer repo — CI runs against the updated workflow
+6. **Sweep all** once confident: `scripts/ci-sweep.sh --all`
+7. **Tag** a new release if the change is stable: `git tag v1.x.y && git push origin v1.x.y`, then `git tag -f v1 && git push --force-with-lease origin v1`
+
 ## Scope Tags
 domain:infrastructure, scope:cross-project
