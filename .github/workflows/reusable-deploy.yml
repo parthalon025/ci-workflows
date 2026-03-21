@@ -1,0 +1,54 @@
+name: Deploy
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        type: string
+        required: true
+      project-path:
+        type: string
+        required: true
+      host-name:
+        type: string
+        default: 'justin-linux'
+      install-command:
+        type: string
+        default: 'pip install -e .'
+    secrets:
+      TS_OAUTH_CLIENT_ID:
+        required: true
+      TS_OAUTH_SECRET:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.host-name }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Get host IP
+        id: host
+        run: echo "ip=$(tailscale ip --4 ${{ inputs.host-name }})" >> "$GITHUB_OUTPUT"
+      - name: Deploy via SSH
+        env:
+          HOST_IP: ${{ steps.host.outputs.ip }}
+          PROJECT_PATH: ${{ inputs.project-path }}
+          INSTALL_CMD: ${{ inputs.install-command }}
+          SERVICE_NAME: ${{ inputs.service-name }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${HOST_IP}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh "justin@${HOST_IP}" bash -s <<'DEPLOY_SCRIPT'
+            set -euo pipefail
+            cd "${PROJECT_PATH}"
+            git pull --ff-only
+            ${INSTALL_CMD}
+            systemctl --user restart "${SERVICE_NAME}"
+            sleep 2
+            systemctl --user is-active "${SERVICE_NAME}"
+          DEPLOY_SCRIPT

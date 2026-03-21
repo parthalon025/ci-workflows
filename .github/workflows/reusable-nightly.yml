@@ -1,0 +1,128 @@
+name: Nightly Deep Scan
+on:
+  workflow_call:
+    inputs:
+      language:
+        type: string
+        default: 'python'
+      python-version:
+        type: string
+        default: '3.12'
+      node-version:
+        type: string
+        default: '20'
+      full-test-args:
+        type: string
+        default: '--timeout=120 -q -n auto'
+      pytest-markers:
+        type: string
+        default: 'not ollama'
+      install-command:
+        type: string
+        default: 'pip install -e ".[dev]"'
+      working-directory:
+        type: string
+        default: '.'
+
+jobs:
+  dep-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python audit
+        if: ${{ inputs.language == 'python' || inputs.language == 'mixed' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Run pip-audit
+        if: ${{ inputs.language == 'python' || inputs.language == 'mixed' }}
+        run: |
+          pip install pip-audit
+          if [ -f requirements.txt ]; then
+            pip-audit -r requirements.txt
+          elif [ -f pyproject.toml ]; then
+            pip install .
+            pip-audit
+          fi
+      - name: Node audit
+        if: ${{ inputs.language == 'node' || inputs.language == 'mixed' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Run npm audit
+        if: ${{ inputs.language == 'node' || inputs.language == 'mixed' }}
+        run: |
+          npm ci
+          npm audit --omit=dev || true
+
+  full-test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        if: ${{ inputs.language == 'python' || inputs.language == 'mixed' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Python tests
+        if: ${{ inputs.language == 'python' || inputs.language == 'mixed' }}
+        env:
+          PYTEST_ARGS: ${{ inputs.full-test-args }}
+          PYTEST_MARKERS: ${{ inputs.pytest-markers }}
+          INSTALL_CMD: ${{ inputs.install-command }}
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install pytest pytest-timeout pytest-xdist
+          # shellcheck disable=SC2086
+          .venv/bin/$INSTALL_CMD
+          MARKER_ARG=""
+          if [ -n "$PYTEST_MARKERS" ]; then
+            MARKER_ARG="-m ${PYTEST_MARKERS}"
+          fi
+          # shellcheck disable=SC2086
+          eval .venv/bin/python -m pytest "$PYTEST_ARGS" $MARKER_ARG
+      - name: Setup Node
+        if: ${{ inputs.language == 'node' || inputs.language == 'mixed' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Node tests
+        if: ${{ inputs.language == 'node' || inputs.language == 'mixed' }}
+        run: |
+          npm ci
+          npm test
+
+  secrets-scan:
+    name: Full Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ inputs.language == 'mixed' && 'python' || inputs.language }}
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3

@@ -1,0 +1,28 @@
+name: CodeQL
+on:
+  workflow_call:
+    inputs:
+      language:
+        type: string
+        default: 'python'
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ inputs.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ inputs.language }}'

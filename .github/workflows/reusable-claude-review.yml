@@ -1,0 +1,25 @@
+name: Claude Code Review
+on:
+  workflow_call:
+
+jobs:
+  review:
+    name: AI Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --model claude-sonnet-4-20250514
+          prompt: |
+            Review for:
+            1. Security issues (auth bypass, injection, unsafe subprocess)
+            2. Silent failure patterns (bare except, swallowed errors)
+            3. CLAUDE.md convention compliance
+            4. Integration boundary bugs (each layer passes its test; bug hides at the seam)
+            Focus on real issues, not style nitpicks.
