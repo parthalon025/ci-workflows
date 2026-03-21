@@ -19,9 +19,6 @@ jobs:
   test:
     needs: lint
     uses: parthalon025/ci-workflows/.github/workflows/reusable-test-node.yml@v1
-    with:
-      coverage: true
-      codecov-upload: true
     secrets: inherit
   security:
     uses: parthalon025/ci-workflows/.github/workflows/reusable-security.yml@v1
