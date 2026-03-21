@@ -1,0 +1,68 @@
+name: Test Python
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: '3.12'
+      pytest-args:
+        type: string
+        default: '--timeout=120 -x -q -n auto'
+      pytest-markers:
+        type: string
+        default: 'not ollama'
+      install-command:
+        type: string
+        default: 'pip install -e ".[dev]"'
+      coverage:
+        type: boolean
+        default: true
+      codecov-upload:
+        type: boolean
+        default: false
+      working-directory:
+        type: string
+        default: '.'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Create venv and install
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install pytest pytest-timeout pytest-xdist
+          .venv/bin/${{ inputs.install-command }}
+      - name: Run tests
+        env:
+          COVERAGE: ${{ inputs.coverage }}
+          PYTEST_ARGS: ${{ inputs.pytest-args }}
+          PYTEST_MARKERS: ${{ inputs.pytest-markers }}
+        run: |
+          COV_ARGS=""
+          if [ "$COVERAGE" = "true" ]; then
+            .venv/bin/python -m pip install pytest-cov
+            COV_ARGS="--cov=. --cov-report=xml"
+          fi
+          if [ -n "$PYTEST_MARKERS" ]; then
+            # shellcheck disable=SC2086
+            .venv/bin/python -m pytest $PYTEST_ARGS $COV_ARGS -m "$PYTEST_MARKERS"
+          else
+            # shellcheck disable=SC2086
+            .venv/bin/python -m pytest $PYTEST_ARGS $COV_ARGS
+          fi
+      - name: Upload coverage
+        if: ${{ inputs.codecov-upload && inputs.coverage }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false

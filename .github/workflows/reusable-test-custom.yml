@@ -1,0 +1,22 @@
+name: Test Custom
+on:
+  workflow_call:
+    inputs:
+      test-command:
+        type: string
+        required: true
+      working-directory:
+        type: string
+        default: '.'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: ${{ inputs.test-command }}

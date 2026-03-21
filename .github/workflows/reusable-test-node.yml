@@ -1,0 +1,37 @@
+name: Test Node
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '20'
+      test-command:
+        type: string
+        default: 'npm test'
+      build-first:
+        type: boolean
+        default: false
+      working-directory:
+        type: string
+        default: '.'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      - run: npm ci
+      - name: Build
+        if: ${{ inputs.build-first }}
+        run: npm run build
+      - name: Test
+        run: ${{ inputs.test-command }}

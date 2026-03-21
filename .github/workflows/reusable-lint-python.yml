@@ -1,0 +1,42 @@
+name: Lint Python
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: '3.12'
+      ruff-args:
+        type: string
+        default: 'check .'
+      working-directory:
+        type: string
+        default: '.'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: ${{ inputs.ruff-args }}
+      - name: Check formatting
+        run: |
+          pip install ruff
+          ruff format --check .
+      - name: Audit dependencies
+        run: |
+          pip install pip-audit
+          if [ -f requirements.txt ]; then
+            pip-audit -r requirements.txt
+          elif [ -f pyproject.toml ]; then
+            pip install .
+            pip-audit
+          fi
