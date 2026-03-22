@@ -26,6 +26,7 @@ jobs:
   security:
     uses: parthalon025/ci-workflows/.github/workflows/reusable-security.yml@v1
     secrets: inherit
+  # Note: CodeQL requires GitHub Advanced Security (free for public repos only)
   codeql:
     uses: parthalon025/ci-workflows/.github/workflows/reusable-codeql.yml@v1
     with:
