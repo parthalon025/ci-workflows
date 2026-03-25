@@ -22,6 +22,7 @@ Source of truth for which repo gets which CI tier.
 | 1 | warmpath | python | simple | yes | pip install -e ".[dev]" |
 | 1 | superhot-ui | node | node | no | npm ci |
 | 1 | vector | mixed | simple | yes | pip install -e ".[dev]" |
+| 1 | pensiv | python | simple | no | pip install -e ".[dev]" |
 | 2 | project-hub | node | node | no | npm ci |
 | 2 | expedition33-ui | node | node | no | npm ci |
 | 2 | ui-template | node | node | no | npm ci |
