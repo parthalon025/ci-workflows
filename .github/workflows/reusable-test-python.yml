@@ -20,6 +20,10 @@ on:
       codecov-upload:
         type: boolean
         default: false
+      coverage-source:
+        type: string
+        default: '.'
+        description: 'Path to measure coverage for (e.g. src/pensiv). Defaults to current directory.'
       working-directory:
         type: string
         default: '.'
@@ -37,21 +41,25 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
       - name: Create venv and install
+        env:
+          INSTALL_CMD: ${{ inputs.install-command }}
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/python -m pip install pytest pytest-timeout pytest-xdist
-          .venv/bin/${{ inputs.install-command }}
+          # bash -c preserves shell quoting in INSTALL_CMD (e.g. extras like ".[dev]")
+          bash -c ".venv/bin/$INSTALL_CMD"
       - name: Run tests
         env:
           COVERAGE: ${{ inputs.coverage }}
+          COVERAGE_SOURCE: ${{ inputs.coverage-source }}
           PYTEST_ARGS: ${{ inputs.pytest-args }}
           PYTEST_MARKERS: ${{ inputs.pytest-markers }}
         run: |
           COV_ARGS=""
           if [ "$COVERAGE" = "true" ]; then
             .venv/bin/python -m pip install pytest-cov
-            COV_ARGS="--cov=. --cov-report=xml"
+            COV_ARGS="--cov=${COVERAGE_SOURCE} --cov-report=xml"
           fi
           if [ -n "$PYTEST_MARKERS" ]; then
             # shellcheck disable=SC2086
