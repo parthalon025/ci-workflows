@@ -11,11 +11,15 @@ on:
       working-directory:
         type: string
         default: '.'
+      runs-on:
+        type: string
+        default: 'ubuntu-latest'
+        description: 'Runner label — set to self-hosted for self-hosted runners'
 
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}

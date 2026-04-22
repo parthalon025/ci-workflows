@@ -23,11 +23,15 @@ on:
       working-directory:
         type: string
         default: '.'
+      runs-on:
+        type: string
+        default: 'ubuntu-latest'
+        description: 'Runner label — set to self-hosted for self-hosted runners'
 
 jobs:
   dep-audit:
     name: Dependency Audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -61,7 +65,7 @@ jobs:
 
   full-test:
     name: Full Test Suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -103,7 +107,7 @@ jobs:
 
   secrets-scan:
     name: Full Secret Scan
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
@@ -114,15 +118,15 @@ jobs:
 
   codeql:
     name: CodeQL
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     permissions:
       security-events: write
       actions: read
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - uses: github/codeql-action/init@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
+      - uses: github/codeql-action/init@ebcb5b36ded6bead4ceefea6a8bc4cc885255bb3  # v3
         with:
           languages: ${{ inputs.language == 'mixed' && 'python' || inputs.language }}
-      - uses: github/codeql-action/autobuild@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
-      - uses: github/codeql-action/analyze@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
+      - uses: github/codeql-action/autobuild@ebcb5b36ded6bead4ceefea6a8bc4cc885255bb3  # v3
+      - uses: github/codeql-action/analyze@ebcb5b36ded6bead4ceefea6a8bc4cc885255bb3  # v3
